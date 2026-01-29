@@ -151,22 +151,38 @@ class OrderNLPParser:
     
     def _parse_instrument(self, instruction: str) -> Optional[str]:
         """Parse instrument symbol from instruction"""
-        # Common patterns for instruments
+        # First check for commodity names (Chinese and English)
+        commodity_map = {
+            '黄金': 'GOLD',
+            '白银': 'SILVER',
+            '原油': 'OIL',
+            '天然气': 'GAS',
+            'gold': 'GOLD',
+            'silver': 'SILVER',
+            'oil': 'OIL',
+            'gas': 'GAS'
+        }
+        
+        for name, symbol in commodity_map.items():
+            if name in instruction.lower():
+                return symbol
+        
+        # Then check for forex and stock symbols
         patterns = [
-            r'([A-Z]{6})',  # Forex pairs like EURUSD
+            r'\b([A-Z]{6})\b',  # Forex pairs like EURUSD
             r'([A-Z]{3}/[A-Z]{3})',  # Forex pairs like EUR/USD
-            r'([A-Z]{2,5})',  # Stock symbols
-            r'(黄金|白银|原油|天然气)',  # Chinese commodity names
-            r'(gold|silver|oil|gas)',  # English commodity names
+            r'\b([A-Z]{2,5})\b',  # Stock symbols (word boundary to avoid matching within words)
         ]
         
         for pattern in patterns:
-            match = re.search(pattern, instruction, re.IGNORECASE)
+            match = re.search(pattern, instruction)
             if match:
                 symbol = match.group(1).upper()
                 # Clean up symbol
                 symbol = symbol.replace('/', '')
-                return symbol
+                # Skip common words that shouldn't be instruments
+                if symbol not in ['AT', 'LOT', 'LEVERAGE', 'LEVERA', 'BUY', 'SELL']:
+                    return symbol
         
         return None
     
